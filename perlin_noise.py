@@ -56,6 +56,9 @@ class Perlin:
     def comb_posneg(self, depth=0):
         return list(itertools.product([-1, 1], repeat=depth))
         
+    def comb_posnegzero(self, depth=0):
+        return list(itertools.product([-1, 0, 1], repeat=depth))
+        
     def hash(self, coords, seq):
         coords = coords + [0] # add dummy 0 as last add value
             
@@ -66,13 +69,11 @@ class Perlin:
         return c
         
     def create_vecs(self, n):
-        combs = self.comb_posneg(n - 1)
-        vecs = [
-            c[:i] + (0,) + c[i:]
-            for c in combs
-            for i in range(n)
-        ]
-        np.random.shuffle(vecs)
+        vecs = self.comb_posnegzero(n)
+        vecs = [v for v in vecs if v != (0,) * n] # drop 0 vector
+        vecs = vecs / np.linalg.norm(vecs, axis=1, keepdims=True) # norm to length 1
+        
+        np.random.shuffle(vecs) # random order
         
         self.vec_tables[n] = vecs
         
@@ -87,7 +88,8 @@ class Perlin:
 
     def fade(self, t):
         # 6t^5 - 15t^4 + 10t^3
-        return 6 * t ** 5 - 15 * t ** 4 + 10 * t ** 3
+        # return 6 * t ** 5 - 15 * t ** 4 + 10 * t ** 3
+        return t * t * t * (10 + t * (-15 + t * 6))
         
     def lerp(self, t, a, b):
         return a + t * (b - a)
@@ -97,10 +99,13 @@ if __name__ == "__main__":
     p = Perlin(256)
 
     st = time.time()
-    grads2 = [[p.noisend(x/10, y/10, 0) for x in range(10*16)] for y in range(10*16)]
+    grads2 = [[p.noisend(x/10, y/10) 
+              for x in range(10*16)]
+              for y in range(10*16)]
     print(time.time() - st)
 
-    
+    print(p.vec_tables)
+    # print(grads2)
     plt.imshow(grads2)
     plt.show()
     
